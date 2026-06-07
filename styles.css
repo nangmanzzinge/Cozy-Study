@@ -22,13 +22,17 @@
     --cookie-dark: #8b6f47;
     --cookie-light: #e6c8a8;
     --cookie-pink: #d89b9b;
+    
+    /* Sunny weather colors */
+    --sunny-sky: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 50%, #FFE5B4 100%);
+    --sunny-sun: #FFD700;
 }
 
 html, body {
     width: 100%;
     height: 100%;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
+    background: var(--sunny-sky);
     color: var(--text-dark);
     overflow: hidden;
 }
@@ -62,7 +66,7 @@ html, body {
     align-items: center;
     justify-content: center;
     padding: 40px 20px;
-    background: linear-gradient(135deg, var(--accent-cream) 0%, var(--accent-warm) 100%);
+    background: var(--sunny-sky);
 }
 
 .adoption-title {
@@ -202,13 +206,14 @@ html, body {
 }
 
 .header {
-    background: linear-gradient(135deg, var(--accent-cream) 0%, var(--accent-warm) 100%);
+    background: linear-gradient(135deg, rgba(255, 248, 240, 0.95) 0%, rgba(240, 230, 216, 0.95) 100%);
     padding: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     box-shadow: var(--shadow-soft);
     border-bottom: 2px solid var(--border-color);
+    backdrop-filter: blur(10px);
 }
 
 .header-left {
@@ -299,7 +304,7 @@ html, body {
 
 .room-section {
     flex: 1;
-    background: white;
+    background: rgba(255, 255, 255, 0.9);
     border-radius: 20px;
     box-shadow: var(--shadow-soft);
     padding: 20px;
@@ -307,6 +312,7 @@ html, body {
     flex-direction: column;
     overflow: hidden;
     border: 2px solid var(--border-color);
+    backdrop-filter: blur(10px);
 }
 
 .room-title {
@@ -324,17 +330,31 @@ html, body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     position: relative;
-    overflow: hidden;
+    overflow: auto;
     gap: 15px;
     padding: 15px;
+}
+
+.pet-display-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
 }
 
 .pet-display {
     font-size: 6em;
     filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.1));
     animation: float 3s ease-in-out infinite;
+}
+
+.pet-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 @keyframes float {
@@ -351,20 +371,42 @@ html, body {
 .room-items {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 15px;
     justify-content: center;
+    align-content: flex-start;
+    flex: 1;
     margin-top: 10px;
 }
 
 .room-item {
-    font-size: 2em;
-    filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.05));
-    animation: sway 2s ease-in-out infinite;
+    font-size: 2.5em;
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.05));
+    animation: sway 2s ease-in-out infinite, appear 0.5s ease-out;
+    display: inline-block;
+}
+
+.furniture-item {
+    animation: sway 2s ease-in-out infinite, appear 0.5s ease-out;
+}
+
+.plant-room-item {
+    animation: sway 3s ease-in-out infinite, appear 0.5s ease-out;
 }
 
 @keyframes sway {
     0%, 100% { transform: rotate(0deg); }
     50% { transform: rotate(2deg); }
+}
+
+@keyframes appear {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 /* ===== SIDEBAR ===== */
@@ -378,11 +420,12 @@ html, body {
 }
 
 .sidebar-section {
-    background: white;
+    background: rgba(255, 255, 255, 0.9);
     border-radius: 15px;
     padding: 15px;
     box-shadow: var(--shadow-soft);
     border: 2px solid var(--border-color);
+    backdrop-filter: blur(10px);
 }
 
 .sidebar-title {
@@ -427,6 +470,72 @@ html, body {
     font-size: 0.75em;
     color: var(--text-light);
     margin-top: 4px;
+}
+
+/* ===== PLANTS SECTION ===== */
+
+.plants-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.plant-item {
+    background: var(--accent-cream);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.plant-item:hover {
+    border-color: var(--text-light);
+    box-shadow: var(--shadow-soft);
+}
+
+.plant-display {
+    font-size: 1.8em;
+}
+
+.plant-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.plant-name {
+    font-size: 0.8em;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.plant-water-btn {
+    padding: 5px 10px;
+    font-size: 0.7em;
+    background: linear-gradient(135deg, #90EE90 0%, #7CCD7C 100%);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.plant-water-btn:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-soft);
+}
+
+.no-plants {
+    font-size: 0.85em;
+    color: var(--text-light);
+    text-align: center;
+    padding: 10px;
+    font-style: italic;
 }
 
 /* ===== SHOP ===== */
@@ -527,10 +636,21 @@ html, body {
     z-index: 2000;
     align-items: center;
     justify-content: center;
+    backdrop-filter: blur(4px);
 }
 
 .modal.active {
     display: flex;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 .modal-content {
@@ -541,6 +661,18 @@ html, body {
     max-width: 500px;
     width: 90%;
     text-align: center;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 .modal-title {
@@ -608,9 +740,22 @@ html, body {
     border: 2px solid var(--border-color);
 }
 
+.timer-button-cancel {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+    color: white;
+    width: 100%;
+    margin-top: 10px;
+}
+
 .timer-button:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-soft);
+}
+
+.timer-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .timer-message {
