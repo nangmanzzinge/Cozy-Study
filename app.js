@@ -9,12 +9,19 @@ const PETS = {
 };
 
 const SHOP_ITEMS = [
-    { id: 'plant', name: 'Plant', emoji: '🌿', price: 5 },
+    { id: 'plant', name: 'Plant', emoji: '🪴', price: 5 },
     { id: 'lamp', name: 'Lamp', emoji: '🕯️', price: 8 },
     { id: 'rug', name: 'Rug', emoji: '🟫', price: 10 },
     { id: 'books', name: 'Books', emoji: '📚', price: 7 },
     { id: 'desk', name: 'Desk', emoji: '🪑', price: 12 },
     { id: 'paint', name: 'Painting', emoji: '🖼️', price: 6 }
+];
+
+const PLANT_STAGES = [
+    { stage: 1, emoji: '🌱', name: 'Sprout', waterCost: 2 },
+    { stage: 2, emoji: '🌿', name: 'Growing', waterCost: 2 },
+    { stage: 3, emoji: '🌾', name: 'Flourishing', waterCost: 2 },
+    { stage: 4, emoji: '🌳', name: 'Mature', waterCost: 2 }
 ];
 
 const COOKIES = ['🍪', '🍪', '🍪', '🍪', '🍪'];
@@ -44,7 +51,8 @@ let gameState = {
     purchasedItems: [],
     allPetsData: {}, // Store data for all pets
     currentTimer: null,
-    timerRunning: false
+    timerRunning: false,
+    activeStudySession: null
 };
 
 // ===== LOCALSTORAGE =====
@@ -153,7 +161,8 @@ function adoptPet(petKey) {
             cookies: 0,
             level: 1,
             studyProgress: 0,
-            items: []
+            items: [],
+            plants: []
         };
         
         saveGame();
@@ -198,10 +207,12 @@ function renderMainScreen() {
         
         <div class="content-area">
             <div class="room-section">
-                <h2 class="room-title">Your Pet's Room</h2>
+                <h2 class="room-title">Your Pet's Room 🌞</h2>
                 <div class="pet-room">
-                    <span class="pet-display" id="petDisplay">${PETS[gameState.currentPet].emoji}</span>
-                    <p class="pet-status" id="petStatus">Happy and relaxed! 💭</p>
+                    <div class="pet-display-container">
+                        <div class="pet-display" id="petDisplay">${PETS[gameState.currentPet].emoji}</div>
+                        <p class="pet-status" id="petStatus">Happy and cozy! 💭</p>
+                    </div>
                     <div class="room-items" id="roomItems"></div>
                 </div>
             </div>
@@ -210,6 +221,11 @@ function renderMainScreen() {
                 <div class="sidebar-section">
                     <h3 class="sidebar-title">📚 Study Sessions</h3>
                     <div class="study-section" id="studySection"></div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">🌱 Plants</h3>
+                    <div class="plants-section" id="plantsSection"></div>
                 </div>
                 
                 <div class="sidebar-section">
@@ -231,12 +247,17 @@ function renderMainScreen() {
         
         <div class="modal" id="studyModal"></div>
         <div class="modal" id="switchPetModal"></div>
+        <div class="modal" id="warningModal"></div>
     `;
     
     app.appendChild(screen);
     renderStudyOptions();
+    renderPlants();
     renderShop();
     renderRoomItems();
+    
+    // Add window unload listener for active sessions
+    window.addEventListener('beforeunload', handlePageExit);
 }
 
 // ===== STUDY SESSIONS =====
@@ -258,28 +279,38 @@ function renderStudyOptions() {
 }
 
 function startStudySession(duration) {
+    // Set active session
+    gameState.activeStudySession = {
+        duration: duration.minutes,
+        timeStarted: Date.now(),
+        isActive: true,
+        started: false
+    };
+    
     const modal = document.getElementById('studyModal');
     modal.classList.add('active');
     
     let timeLeft = duration.minutes * 60;
-    let timerInterval;
+    let timerInterval = null;
     let isPaused = false;
     
     modal.innerHTML = `
         <div class="modal-content timer-modal-content">
             <h2 class="modal-title">📖 Study Session</h2>
-            <div class="timer-display" id="timerDisplay">00:00</div>
+            <div class="timer-display" id="timerDisplay">${String(Math.floor(timeLeft / 60)).padStart(2, '0')}:${String(timeLeft % 60).padStart(2, '0')}</div>
             <div class="timer-controls">
-                <button class="timer-button timer-button-start" id="startBtn" onclick="startTimer()">Start</button>
-                <button class="timer-button timer-button-pause" id="pauseBtn" onclick="pauseTimer()" disabled>Pause</button>
+                <button class="timer-button timer-button-start" id="startBtn" onclick="window.startTimerFunc()">Start</button>
+                <button class="timer-button timer-button-pause" id="pauseBtn" onclick="window.pauseTimerFunc()" disabled>Pause</button>
             </div>
+            <button class="timer-button timer-button-cancel" id="cancelBtn" onclick="window.cancelStudySessionFunc()">Cancel Session</button>
             <p class="timer-message" id="timerMessage">Ready to study? Click Start!</p>
         </div>
     `;
     
-    window.startTimer = () => {
+    window.startTimerFunc = () => {
         if (timerInterval) return;
         
+        gameState.activeStudySession.started = true;
         const startBtn = document.getElementById('startBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         startBtn.disabled = true;
@@ -297,7 +328,7 @@ function startStudySession(duration) {
         }, 1000);
     };
     
-    window.pauseTimer = () => {
+    window.pauseTimerFunc = () => {
         if (!timerInterval) return;
         
         clearInterval(timerInterval);
@@ -312,7 +343,21 @@ function startStudySession(duration) {
         document.getElementById('timerMessage').textContent = 'Paused. Click Start to continue!';
     };
     
-    updateTimerDisplay(timeLeft, duration);
+    window.cancelStudySessionFunc = () => {
+        if (timerInterval) clearInterval(timerInterval);
+        
+        if (gameState.activeStudySession.started) {
+            showWarningModal('⚠️ Session Cancelled', 'You cancelled the study session before completion. No cookies earned. Keep practicing! 💪', () => {
+                gameState.activeStudySession = null;
+                saveGame();
+                closeModals();
+            });
+        } else {
+            gameState.activeStudySession = null;
+            saveGame();
+            closeModals();
+        }
+    };
 }
 
 function updateTimerDisplay(seconds, duration) {
@@ -323,6 +368,7 @@ function updateTimerDisplay(seconds, duration) {
 }
 
 function completeStudySession(cookiesEarned) {
+    gameState.activeStudySession = null;
     const petData = getPetData();
     petData.cookies += cookiesEarned;
     petData.studyProgress += cookiesEarned;
@@ -346,6 +392,14 @@ function completeStudySession(cookiesEarned) {
     showFloatingCookie();
 }
 
+function handlePageExit(event) {
+    if (gameState.activeStudySession && gameState.activeStudySession.isActive && gameState.activeStudySession.started) {
+        event.preventDefault();
+        event.returnValue = '⚠️ You have an active study session! Leaving will cancel it and you won\'t receive any cookies.';
+        return event.returnValue;
+    }
+}
+
 function showFloatingCookie() {
     const cookieType = COOKIE_TYPES[Math.floor(Math.random() * COOKIE_TYPES.length)];
     const cookie = document.createElement('div');
@@ -361,7 +415,79 @@ function showFloatingCookie() {
 function closeModals() {
     document.getElementById('studyModal').classList.remove('active');
     document.getElementById('switchPetModal').classList.remove('active');
+    document.getElementById('warningModal').classList.remove('active');
     renderMainScreen();
+}
+
+// ===== PLANTS SYSTEM =====
+function renderPlants() {
+    const section = document.getElementById('plantsSection');
+    section.innerHTML = '';
+    const petData = getPetData();
+    
+    if (!petData.plants) {
+        petData.plants = [];
+    }
+    
+    if (petData.plants.length === 0) {
+        section.innerHTML = '<div class="no-plants">No plants yet! Buy one from the shop.</div>';
+        return;
+    }
+    
+    petData.plants.forEach((plant, index) => {
+        const plantStage = PLANT_STAGES[plant.stage - 1];
+        const plantDiv = document.createElement('div');
+        plantDiv.className = 'plant-item';
+        plantDiv.innerHTML = `
+            <div class="plant-display">${plantStage.emoji}</div>
+            <div class="plant-info">
+                <span class="plant-name">${plantStage.name}</span>
+                <button class="plant-water-btn" onclick="waterPlant(${index})">Water (${plantStage.waterCost} 🍪)</button>
+            </div>
+        `;
+        section.appendChild(plantDiv);
+    });
+}
+
+function waterPlant(plantIndex) {
+    const petData = getPetData();
+    const plant = petData.plants[plantIndex];
+    const plantStage = PLANT_STAGES[plant.stage - 1];
+    
+    if (petData.cookies < plantStage.waterCost) {
+        alert(`You need ${plantStage.waterCost - petData.cookies} more cookies!`);
+        return;
+    }
+    
+    petData.cookies -= plantStage.waterCost;
+    
+    // Grow plant
+    if (plant.stage < PLANT_STAGES.length) {
+        plant.stage++;
+        plant.lastWatered = Date.now();
+    }
+    
+    saveGame();
+    renderPlants();
+    renderRoomItems();
+    
+    // Update cookie display
+    document.getElementById('totalCookies').textContent = petData.cookies;
+    document.getElementById('cookieCount').textContent = petData.cookies;
+}
+
+function addPlantToRoom() {
+    const petData = getPetData();
+    if (!petData.plants) {
+        petData.plants = [];
+    }
+    
+    petData.plants.push({
+        stage: 1,
+        lastWatered: Date.now()
+    });
+    
+    saveGame();
 }
 
 // ===== SHOP =====
@@ -375,15 +501,21 @@ function renderShop() {
         shopItem.className = 'shop-item';
         const isOwned = petData.items.includes(item.id);
         
+        // Special handling for plant item
+        let displayPrice = `${item.price} 🍪`;
+        if (item.id === 'plant' && !isOwned) {
+            displayPrice = `${item.price} 🍪 to Plant`;
+        }
+        
         shopItem.innerHTML = `
             <div class="shop-item-emoji">${item.emoji}</div>
             <div class="shop-item-name">${item.name}</div>
             <div class="shop-item-price">
-                ${isOwned ? '✓ Owned' : `${item.price} 🍪`}
+                ${isOwned && item.id !== 'plant' ? '✓ Owned' : displayPrice}
             </div>
         `;
         
-        if (isOwned) {
+        if (isOwned && item.id !== 'plant') {
             shopItem.style.opacity = '0.6';
         } else {
             shopItem.style.cursor = 'pointer';
@@ -399,9 +531,18 @@ function buyItem(item) {
     
     if (petData.cookies >= item.price) {
         petData.cookies -= item.price;
-        petData.items.push(item.id);
+        
+        // Special handling for plants
+        if (item.id === 'plant') {
+            addPlantToRoom();
+        } else {
+            // For furniture, don't add if already purchased
+            if (!petData.items.includes(item.id)) {
+                petData.items.push(item.id);
+            }
+        }
+        
         saveGame();
-        renderMainScreen();
         showItemBought(item);
     } else {
         alert(`You need ${item.price - petData.cookies} more cookies!`);
@@ -411,11 +552,17 @@ function buyItem(item) {
 function showItemBought(item) {
     const modal = document.getElementById('studyModal');
     modal.classList.add('active');
+    
+    let message = `You bought <strong>${item.name}</strong>! Your pet loves it!`;
+    if (item.id === 'plant') {
+        message = `You planted a new <strong>${item.name}</strong>! Water it to watch it grow!`;
+    }
+    
     modal.innerHTML = `
         <div class="modal-content">
             <h2 class="modal-title">🎁 Purchased!</h2>
             <p class="modal-body">${item.emoji}</p>
-            <p class="modal-body">You bought <strong>${item.name}</strong>! Your pet loves it!</p>
+            <p class="modal-body">${message}</p>
             <div class="modal-buttons">
                 <button class="button button-primary" onclick="closeModals()">Awesome!</button>
             </div>
@@ -429,15 +576,49 @@ function renderRoomItems() {
     container.innerHTML = '';
     const petData = getPetData();
     
-    petData.items.forEach(itemId => {
-        const item = SHOP_ITEMS.find(i => i.id === itemId);
-        if (item) {
-            const roomItem = document.createElement('div');
-            roomItem.className = 'room-item';
-            roomItem.textContent = item.emoji;
-            container.appendChild(roomItem);
-        }
-    });
+    // Render furniture items
+    if (petData.items && petData.items.length > 0) {
+        petData.items.forEach((itemId, index) => {
+            const item = SHOP_ITEMS.find(i => i.id === itemId);
+            if (item) {
+                const roomItem = document.createElement('div');
+                roomItem.className = 'room-item furniture-item';
+                roomItem.textContent = item.emoji;
+                roomItem.style.animationDelay = `${index * 0.1}s`;
+                container.appendChild(roomItem);
+            }
+        });
+    }
+    
+    // Render plants
+    if (petData.plants && petData.plants.length > 0) {
+        petData.plants.forEach((plant, index) => {
+            const plantStage = PLANT_STAGES[plant.stage - 1];
+            const plantItem = document.createElement('div');
+            plantItem.className = 'room-item plant-room-item';
+            plantItem.textContent = plantStage.emoji;
+            plantItem.title = `Plant Stage: ${plantStage.name}`;
+            plantItem.style.animationDelay = `${(petData.items.length + index) * 0.1}s`;
+            container.appendChild(plantItem);
+        });
+    }
+}
+
+// ===== WARNING MODAL =====
+function showWarningModal(title, message, callback) {
+    const modal = document.getElementById('warningModal');
+    modal.classList.add('active');
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h2 class="modal-title">${title}</h2>
+            <p class="modal-body">${message}</p>
+            <div class="modal-buttons">
+                <button class="button button-primary" onclick="window.handleWarningConfirmFunc()">OK</button>
+            </div>
+        </div>
+    `;
+    
+    window.handleWarningConfirmFunc = callback;
 }
 
 // ===== PET SWITCHING =====
@@ -481,7 +662,8 @@ function switchPet(petKey) {
             cookies: 0,
             level: 1,
             studyProgress: 0,
-            items: []
+            items: [],
+            plants: []
         };
     }
     saveGame();
@@ -496,7 +678,8 @@ function getPetData() {
             cookies: 0,
             level: 1,
             studyProgress: 0,
-            items: []
+            items: [],
+            plants: []
         };
     }
     return gameState.allPetsData[gameState.currentPet];
